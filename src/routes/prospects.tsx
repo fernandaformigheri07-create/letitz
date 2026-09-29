@@ -31,7 +31,7 @@ export const Route = createFileRoute("/prospects")({
       },
     ],
   }),
-  component: Prospects;
+  component: Prospects,
 });
 
 const FILTERS: Array<{ key: LeadQuality | "all"; label: string }> = [

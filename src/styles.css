@@ -200,6 +200,24 @@
   }
 }
 
+@utility input-base {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 60%, transparent);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 200ms ease;
+  &::placeholder {
+    color: var(--muted-foreground);
+  }
+  &:focus {
+    border-color: var(--border-strong);
+  }
+}
+
 @utility interactive {
   transition:
     background-color 200ms ease,
