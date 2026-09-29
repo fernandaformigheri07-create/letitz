@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentRouteImport } from './routes/agent'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ProspectsRouteImport } from './routes/prospects'
 import { Route as SalesRouteImport } from './routes/sales'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const AgentRoute = AgentRouteImport.update({
   id: '/agent',
   path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsRoute = CampaignsRouteImport.update({
@@ -68,6 +74,7 @@ const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agent'
+    | '/auth'
     | '/campaigns'
     | '/prospects'
     | '/sales'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agent'
+    | '/auth'
     | '/campaigns'
     | '/prospects'
     | '/sales'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agent'
+    | '/auth'
     | '/campaigns'
     | '/prospects'
     | '/sales'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentRoute: typeof AgentRoute
+  AuthRoute: typeof AuthRoute
   CampaignsRoute: typeof CampaignsRoute
   ProspectsRoute: typeof ProspectsRoute
   SalesRoute: typeof SalesRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/agent'
       fullPath: '/agent'
       preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns': {
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentRoute: AgentRoute,
+  AuthRoute: AuthRoute,
   CampaignsRoute: CampaignsRoute,
   ProspectsRoute: ProspectsRoute,
   SalesRoute: SalesRoute,
