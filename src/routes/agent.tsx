@@ -31,7 +31,7 @@ function AgentPage() {
       greeting="LETITZ Agent"
       subtitle="Peça em linguagem natural. Nada é executado sem sua confirmação."
     >
-      <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_22rem]">
         <AgentConsole />
 
         <div className="space-y-6">
