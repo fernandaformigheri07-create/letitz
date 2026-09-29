@@ -90,6 +90,16 @@ function Prospects() {
   const visible =
     result?.leads.filter((l) => (filter === "all" ? true : l.lead_quality === filter)) ?? [];
 
+  const livePanels = result
+    ? [
+        { label: "businesses found", value: formatNumber(result.discovered) },
+        { label: "websites analyzed", value: formatNumber(result.analyzed) },
+        { label: "high opportunity", value: formatNumber(result.highOpportunity) },
+        { label: "exceptional", value: formatNumber(result.exceptional) },
+        { label: "good", value: formatNumber(result.good) },
+      ]
+    : discoveryPanels;
+
   return (
     <AppShell
       greeting="Lead Discovery"
