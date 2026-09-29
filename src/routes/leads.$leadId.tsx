@@ -1,285 +1,144 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Globe, Instagram, Mail, MapPin, MessageCircle, Phone, Star } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
-import { ActionButton, Panel, QualityBadge, ScoreDial, SectionTitle } from "@/components/ui-kit";
-import { scoreLead } from "@/services/googlePlaces";
-import { WEBSITE_STATUS_LABEL } from "@/lib/scoring";
-import {
-  conversations,
-  formatCurrency,
-  formatDate,
-  formatDateTime,
-  getLead,
-  LEAD_STATUS_LABEL,
-  LEAD_STATUS_ORDER,
-  sales,
-  type Lead,
-} from "@/lib/demo-data";
+import { ActionButton, EmptyState, QualityBadge, SectionTitle } from "@/components/ui-kit";
+import { supabase } from "@/integrations/supabase/client";
+import { levelLabel } from "@/lib/agent-levels";
+import { formatDateTime, signalsOf } from "@/lib/format";
+import type { LeadQuality } from "@/lib/scoring";
 
 export const Route = createFileRoute("/leads/$leadId")({
-  loader: ({ params }) => {
-    const lead = getLead(params.leadId);
-    if (!lead) throw notFound();
-    return { lead };
-  },
-  head: ({ loaderData }) => {
-    if (!loaderData) {
-      return { meta: [{ title: "Lead indisponível — LETITZ" }, { name: "robots", content: "noindex" }] };
-    }
-    const { lead } = loaderData;
-    const title = `${lead.company_name} — Lead ${lead.lead_score}/100 · LETITZ`;
-    const description = `${lead.segment} em ${lead.city}, ${lead.state}. Situação do site: ${WEBSITE_STATUS_LABEL[lead.website_status]}.`;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-      ],
-    };
-  },
-  component: LeadDetail,
+  head: () => ({
+    meta: [
+      { title: "Lead — LETITZ" },
+      { name: "description", content: "Detalhe do lead: sinais, conversas, autorizações e histórico de ações do Agent." },
+      { property: "og:title", content: "Lead — LETITZ" },
+      { property: "og:description", content: "Contexto completo de uma oportunidade comercial." },
+    ],
+  }),
+  component: () => (
+    <AppShell>
+      <LeadDetail />
+    </AppShell>
+  ),
 });
 
 function LeadDetail() {
-  const { lead } = Route.useLoaderData();
-  const score = scoreLead(lead);
-  const leadConversations = conversations.filter((c) => c.lead_id === lead.id);
-  const leadSales = sales.filter((s) => s.lead_id === lead.id);
+  const { leadId } = Route.useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [notes, setNotes] = useState<string | null>(null);
+
+  const q = useQuery({
+    queryKey: ["lead", leadId],
+    queryFn: async () => {
+      const [lead, convs, auths, actions] = await Promise.all([
+        supabase.from("leads").select("*").eq("id", leadId).maybeSingle(),
+        supabase.from("conversations").select("id,interlocutor_type,last_intent,conversation_messages(id,direction,body,delivery_status,created_at)").eq("lead_id", leadId),
+        supabase.from("authorizations").select("id,level,scope,granted_at").eq("lead_id", leadId).is("revoked_at", null),
+        supabase.from("agent_actions").select("id,summary,status,created_at,error").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(20),
+      ]);
+      return { lead: lead.data, convs: convs.data ?? [], auths: auths.data ?? [], actions: actions.data ?? [] };
+    },
+  });
+
+  if (q.isLoading) return null;
+  const lead = q.data?.lead;
+  if (!lead) return <EmptyState title="Lead não encontrado." description="Ele pode ter sido removido." action={<Link to="/leads" className="text-xs text-primary">Voltar</Link>} />;
+
+  const revoke = async (id: string) => {
+    await supabase.from("authorizations").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["lead", leadId] });
+  };
+  const saveNotes = async () => {
+    await supabase.from("leads").update({ notes }).eq("id", leadId);
+    qc.invalidateQueries({ queryKey: ["lead", leadId] });
+    setNotes(null);
+  };
+  const messages = q.data!.convs.flatMap((c) => c.conversation_messages ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const conv = q.data!.convs[0];
 
   return (
-    <AppShell>
-      <div className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
-        <Link to="/leads" className="hover:text-foreground">
-          Leads
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{lead.company_name}</span>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-10">
+      <Link to="/leads" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" /> Leads</Link>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <div className="space-y-6">
-          <Panel>
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-display text-xl text-foreground">{lead.company_name}</h1>
-                  <QualityBadge quality={lead.lead_quality} />
-                </div>
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  {lead.segment} · {lead.city}, {lead.state} · {lead.country}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Capturado em {formatDate(lead.created_at)} · origem {lead.source}
-                </p>
+      <header className="flex flex-wrap items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-display text-2xl text-foreground">{lead.company_name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{[lead.contact_name, lead.segment, lead.city, lead.state].filter(Boolean).join(" · ") || "Sem dados adicionais"}</p>
+        </div>
+        <QualityBadge quality={lead.lead_quality as LeadQuality} />
+        <ActionButton onClick={() => navigate({ to: "/agent", search: { q: `Sobre o lead ${lead.company_name}${lead.contact_name ? ` (${lead.contact_name})` : ""}: ` } })}>
+          <Sparkles className="size-3.5" /> Falar com o Agent
+        </ActionButton>
+      </header>
+
+      <div className="grid gap-10 lg:grid-cols-[1fr_18rem]">
+        <div className="space-y-10">
+          <section>
+            <SectionTitle title="Por que este lead" hint="Somente sinais realmente obtidos" />
+            {signalsOf(lead.signals).length ? (
+              <ul className="space-y-1.5 text-sm text-foreground">{signalsOf(lead.signals).map((s) => <li key={s}>· {s}</li>)}</ul>
+            ) : <p className="text-xs text-muted-foreground">Nenhum sinal registrado.</p>}
+          </section>
+
+          <section>
+            <SectionTitle title="Conversa" hint={conv ? `Interlocutor: ${conv.interlocutor_type ?? "desconhecido"}${conv.last_intent ? ` · ${conv.last_intent}` : ""}` : undefined} />
+            {messages.length ? (
+              <div className="space-y-2">
+                {messages.map((m) => (
+                  <div key={m.id} className={m.direction === "inbound" ? "flex" : "flex justify-end"}>
+                    <p className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${m.direction === "inbound" ? "bg-surface-2/70 text-foreground" : "bg-primary/15 text-foreground"}`}>
+                      {m.body}
+                      <span className="mt-1 block text-[0.625rem] text-muted-foreground">{formatDateTime(m.created_at)} · {m.delivery_status}</span>
+                    </p>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-4">
-                <ScoreDial score={lead.lead_score} size={72} />
-                <div>
-                  <p className="label-caps">Lead score</p>
-                  <p className="text-numeric text-lg text-foreground">{lead.lead_score} / 100</p>
-                  <p className="mt-1 text-[0.6875rem] text-muted-foreground">
-                    Classificação interna do LETITZ
-                  </p>
-                </div>
-              </div>
-            </div>
+            ) : <p className="text-xs text-muted-foreground">Nenhuma conversa registrada. WhatsApp não conectado.</p>}
+          </section>
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              <ActionButton>Preparar abordagem</ActionButton>
-              <ActionButton variant="outline">Agendar follow-up</ActionButton>
-              <ActionButton variant="ghost">Marcar como contatado</ActionButton>
-            </div>
-          </Panel>
-
-          <Panel>
-            <SectionTitle title="Timeline" hint="Jornada do lead dentro do LETITZ" />
-            <ol className="relative space-y-4 pl-5">
-              <span className="absolute top-1 bottom-1 left-[3px] w-px bg-border" />
-              {["Captured", "Qualified", "Added to CRM", ...LEAD_STATUS_ORDER.slice(2, 7).map((s) => LEAD_STATUS_LABEL[s])].map(
-                (step, i) => {
-                  const reached = i <= LEAD_STATUS_ORDER.indexOf(lead.lead_status) + 1;
-                  return (
-                    <li key={step} className="relative">
-                      <span
-                        className={`absolute top-1.5 -left-5 size-1.5 rounded-full ${reached ? "bg-primary" : "bg-border-strong"}`}
-                      />
-                      <p className={`text-sm ${reached ? "text-foreground" : "text-muted-foreground"}`}>
-                        {step}
-                      </p>
-                    </li>
-                  );
-                },
-              )}
-            </ol>
-          </Panel>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Panel>
-              <SectionTitle title="Business information" />
-              <dl className="space-y-3 text-sm">
-                <Row label="Segmento" value={lead.segment} />
-                <Row label="Cidade" value={`${lead.city}, ${lead.state}`} />
-                <Row
-                  label="Google rating"
-                  value={lead.google_rating ? `${lead.google_rating.toFixed(1)} ★` : "—"}
-                />
-                <Row label="Avaliações" value={String(lead.review_count)} />
-                <Row label="Place ID" value={lead.google_place_id} />
-              </dl>
-            </Panel>
-
-            <Panel>
-              <SectionTitle title="Website analysis" hint="Análise simulada — analyzeWebsite()" />
-              <dl className="space-y-3 text-sm">
-                <Row label="Situação" value={WEBSITE_STATUS_LABEL[lead.website_status]} />
-                <Row label="Website" value={lead.website ?? "Não possui"} />
-                <Row
-                  label="Website score"
-                  value={lead.website_score !== null ? `${lead.website_score} / 100` : "—"}
-                />
-              </dl>
-            </Panel>
-
-            <Panel>
-              <SectionTitle title="Contact information" />
-              <ul className="space-y-2.5 text-sm text-foreground">
-                <ContactLine icon={<Phone className="size-3.5" />} value={lead.phone} />
-                <ContactLine
-                  icon={<MessageCircle className="size-3.5" />}
-                  value={lead.whatsapp ?? "WhatsApp não identificado"}
-                />
-                <ContactLine
-                  icon={<Mail className="size-3.5" />}
-                  value={lead.email ?? "E-mail não identificado"}
-                />
-                <ContactLine
-                  icon={<Instagram className="size-3.5" />}
-                  value={lead.instagram ?? "Instagram não identificado"}
-                />
-                <ContactLine
-                  icon={<Globe className="size-3.5" />}
-                  value={lead.website ?? "Sem site"}
-                />
-                <ContactLine
-                  icon={<MapPin className="size-3.5" />}
-                  value={`${lead.city}, ${lead.state}`}
-                />
-              </ul>
-            </Panel>
-
-            <Panel>
-              <SectionTitle title="Activity" />
-              <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li>Status atual: {LEAD_STATUS_LABEL[lead.lead_status]}</li>
-                <li>
-                  Último contato:{" "}
-                  {lead.last_contact_at ? formatDateTime(lead.last_contact_at) : "sem contato"}
-                </li>
-                <li>
-                  Próximo follow-up:{" "}
-                  {lead.next_followup_at ? formatDateTime(lead.next_followup_at) : "não agendado"}
-                </li>
-                <li>Atualizado em {formatDateTime(lead.updated_at)}</li>
-              </ul>
-            </Panel>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Panel>
-              <SectionTitle title="Conversations" />
-              {leadConversations.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma conversa registrada.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {leadConversations.map((c) => (
-                    <li key={c.id} className="panel-quiet p-3">
-                      <p className="text-xs text-muted-foreground">{formatDateTime(c.last_at)}</p>
-                      <p className="mt-1 text-sm text-foreground">
-                        {c.messages[c.messages.length - 1]?.body}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-
-            <Panel>
-              <SectionTitle title="Sales" />
-              {leadSales.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma venda registrada.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {leadSales.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between">
-                      <span className="text-foreground">{s.service}</span>
-                      <span className="text-numeric text-muted-foreground">
-                        {formatCurrency(s.value)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-          </div>
+          <section>
+            <SectionTitle title="Notas" />
+            <textarea className="input-base min-h-24" value={notes ?? lead.notes ?? ""} onChange={(e) => setNotes(e.target.value)} />
+            {notes !== null && <ActionButton className="mt-2" onClick={saveNotes}>Salvar notas</ActionButton>}
+          </section>
         </div>
 
-        <aside className="space-y-6">
-          <Panel>
-            <SectionTitle title="Why this lead?" hint="Fatores que compõem o score" />
-            <ul className="space-y-2.5">
-              {score.factors
-                .filter((f) => f.points > 0)
-                .sort((a, b) => b.points - a.points)
-                .map((f) => (
-                  <li key={f.key} className="flex items-start gap-3">
-                    <Star className="mt-0.5 size-3 shrink-0 text-primary" strokeWidth={1.8} />
-                    <div className="min-w-0">
-                      <p className="text-xs text-foreground">{f.detail}</p>
-                      <p className="label-caps mt-0.5 text-[0.5625rem]">
-                        {f.label} · +{f.points}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-            <p className="mt-4 text-[0.6875rem] text-muted-foreground">
-              O score é uma classificação interna, não uma verdade absoluta.
-            </p>
-          </Panel>
-
-          <Panel>
-            <SectionTitle title="Notas" />
-            <textarea
-              rows={5}
-              defaultValue={lead.notes}
-              placeholder="Registre contexto da negociação..."
-              className="input-base resize-none"
-            />
-          </Panel>
+        <aside className="space-y-8">
+          <section>
+            <p className="label-caps mb-3">Contato</p>
+            <dl className="space-y-1.5 text-xs">
+              <Row k="WhatsApp" v={lead.whatsapp} /><Row k="Telefone" v={lead.phone} /><Row k="E-mail" v={lead.email} /><Row k="Site" v={lead.website ?? "sem site"} />
+            </dl>
+          </section>
+          <section>
+            <p className="label-caps mb-3">Autorizações</p>
+            {q.data!.auths.length ? q.data!.auths.map((a) => (
+              <div key={a.id} className="mb-2 text-xs">
+                <p className="text-foreground">Até {levelLabel(a.level)}</p>
+                <p className="text-muted-foreground">{a.scope}</p>
+                <button onClick={() => revoke(a.id)} className="mt-1 text-[0.6875rem] text-destructive hover:underline">Revogar</button>
+              </div>
+            )) : <p className="text-xs text-muted-foreground">Nenhuma. O Agent não pode conversar com este contato.</p>}
+          </section>
+          <section>
+            <p className="label-caps mb-3">Ações do Agent</p>
+            {q.data!.actions.length ? (
+              <ul className="space-y-2 text-xs">{q.data!.actions.map((a) => (
+                <li key={a.id}><p className="text-foreground">{a.summary}</p><p className="text-muted-foreground">{a.status}{a.error ? ` — ${a.error}` : ""}</p></li>
+              ))}</ul>
+            ) : <p className="text-xs text-muted-foreground">Nenhuma ação ainda.</p>}
+          </section>
         </aside>
       </div>
-    </AppShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2 last:border-0">
-      <dt className="label-caps">{label}</dt>
-      <dd className="truncate text-right text-xs text-foreground">{value}</dd>
     </div>
   );
 }
 
-function ContactLine({ icon, value }: { icon: React.ReactNode; value: string }) {
-  return (
-    <li className="flex items-center gap-2.5 text-xs">
-      <span className="text-muted-foreground">{icon}</span>
-      <span className="truncate">{value}</span>
-    </li>
-  );
+function Row({ k, v }: { k: string; v: string | null }) {
+  return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{k}</dt><dd className="truncate text-foreground">{v ?? "—"}</dd></div>;
 }
-
-export type { Lead };

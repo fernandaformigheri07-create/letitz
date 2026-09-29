@@ -1,203 +1,196 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { ArrowUp, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
-import { AgentConsole } from "@/components/AgentConsole";
-import { DigitalGlobe } from "@/components/DigitalGlobe";
-import { Counter, DemoTag, Panel, SectionTitle, Sparkline } from "@/components/ui-kit";
-import {
-  activity,
-  analytics,
-  discoveryPanels,
-  formatCurrency,
-  formatDateTime,
-  formatNumber,
-  overviewMetrics,
-  pipeline,
-  salesSummary,
-} from "@/lib/demo-data";
+import { ActionCard } from "@/components/agent/ActionCard";
+import { SUGGESTIONS } from "@/components/agent/AgentChat";
+import { EmptyState, SectionTitle } from "@/components/ui-kit";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LETITZ — Command center de prospecção e vendas" },
+      { title: "Command Center — LETITZ" },
       {
         name: "description",
-        content:
-          "LETITZ é um agente de prospecção: descubra empresas, qualifique leads por score, prepare campanhas e acompanhe vendas em um único painel.",
+        content: "Estado real da sua operação comercial: decisões pendentes, oportunidades, follow-ups e vendas.",
       },
-      { property: "og:title", content: "LETITZ — Command center de prospecção e vendas" },
-      {
-        property: "og:description",
-        content:
-          "Descoberta de oportunidades, qualificação por score, campanhas e vendas em um produto único.",
-      },
+      { property: "og:title", content: "Command Center — LETITZ" },
+      { property: "og:description", content: "O sistema operacional comercial comandado por um Agent." },
     ],
   }),
-  component: Overview,
+  component: () => (
+    <AppShell>
+      <CommandCenter />
+    </AppShell>
+  ),
 });
 
-function Overview() {
-  const snapshot = analytics["30d"];
+const count = async (table: "leads" | "conversations" | "campaigns" | "conversation_messages" | "opportunities" | "follow_ups" | "sales", filter?: (q: any) => any) => {
+  let q = supabase.from(table).select("id", { count: "exact", head: true });
+  if (filter) q = filter(q);
+  const { count: c } = await q;
+  return c ?? 0;
+};
+
+function CommandCenter() {
+  const navigate = useNavigate();
+  const [prompt, setPrompt] = useState("");
+
+  const stats = useQuery({
+    queryKey: ["cc-stats"],
+    queryFn: async () => {
+      const [leads, contacts, conversations, campaigns, messages, opps, interested, followUps, salesRows] = await Promise.all([
+        count("leads"),
+        count("leads", (q) => q.not("contact_name", "is", null)),
+        count("conversations"),
+        count("campaigns"),
+        count("conversation_messages"),
+        count("opportunities"),
+        count("opportunities", (q) => q.eq("stage", "interest")),
+        count("follow_ups", (q) => q.eq("status", "scheduled")),
+        supabase.from("sales").select("value"),
+      ]);
+      const sales = salesRows.data ?? [];
+      const revenue = sales.reduce((s, r) => s + Number(r.value), 0);
+      return {
+        leads, contacts, companies: leads, conversations, campaigns, messages, opps, interested, followUps,
+        sales: sales.length, revenue,
+        conversion: leads ? Math.round((sales.length / leads) * 1000) / 10 : 0,
+      };
+    },
+  });
+
+  const lists = useQuery({
+    queryKey: ["cc-lists"],
+    queryFn: async () => {
+      const [pending, follow, opps, sales] = await Promise.all([
+        supabase.from("agent_actions").select("id").eq("status", "awaiting_authorization").order("created_at", { ascending: false }).limit(5),
+        supabase.from("follow_ups").select("id,kind,reason,due_at,leads(company_name)").eq("status", "scheduled").order("due_at").limit(5),
+        supabase.from("opportunities").select("id,title,stage,signal,next_step,lead_id").order("updated_at", { ascending: false }).limit(5),
+        supabase.from("sales").select("id,client_name,value,sold_at").order("sold_at", { ascending: false }).limit(5),
+      ]);
+      return { pending: pending.data ?? [], follow: follow.data ?? [], opps: opps.data ?? [], sales: sales.data ?? [] };
+    },
+  });
+
+  const s = stats.data;
+  const metrics = [
+    ["Leads", s?.leads], ["Contatos", s?.contacts], ["Empresas", s?.companies], ["Conversas", s?.conversations],
+    ["Campanhas", s?.campaigns], ["Mensagens", s?.messages], ["Oportunidades", s?.opps], ["Interessados", s?.interested],
+    ["Follow-ups", s?.followUps], ["Vendas", s?.sales], ["Receita", s ? formatCurrency(s.revenue) : undefined],
+    ["Conversão", s ? `${s.conversion}%` : undefined],
+  ] as const;
+
+  const go = (text: string) => text.trim() && navigate({ to: "/agent", search: { q: text.trim() } });
 
   return (
-    <AppShell greeting="Boa noite, Alice." subtitle="O que vamos construir hoje?">
-      <div className="space-y-6">
-        <AgentConsole compact />
+    <div className="mx-auto max-w-6xl space-y-12">
+      <section className="rise-in pt-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-3.5 text-primary" strokeWidth={1.7} />
+          <span className="label-caps text-foreground">LETITZ Agent</span>
+        </div>
+        <h1 className="text-display mt-3 text-2xl text-foreground sm:text-3xl">Command Center</h1>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            go(prompt);
+          }}
+          className="mt-6 flex items-center gap-2 rounded-2xl border border-border/70 bg-surface/60 p-2 pl-4 backdrop-blur-xl focus-within:border-primary/40"
+        >
+          <input
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Diga ao Agent o que fazer…"
+            className="h-10 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          <button type="submit" aria-label="Enviar" className="focus-ring accent-rule rounded-xl p-2.5 text-primary-foreground">
+            <ArrowUp className="size-4" />
+          </button>
+        </form>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          {SUGGESTIONS.slice(0, 3).map((t) => (
+            <button key={t} onClick={() => go(t)} className="text-xs text-muted-foreground hover:text-foreground">
+              {t}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-x-6 gap-y-5 border-y border-border/50 py-6 sm:grid-cols-4 lg:grid-cols-6">
+        {metrics.map(([label, value]) => (
+          <div key={label}>
+            <p className="label-caps">{label}</p>
+            <p className="text-numeric mt-1 text-lg text-foreground">{value ?? "—"}</p>
+          </div>
+        ))}
+      </section>
+
+      <div className="grid gap-12 lg:grid-cols-2">
+        <section>
+          <SectionTitle title="Decisões pendentes" hint="Ações do Agent aguardando sua autorização" />
+          {lists.data?.pending.length ? (
+            <div className="space-y-2">{lists.data.pending.map((p) => <ActionCard key={p.id} id={p.id} />)}</div>
+          ) : (
+            <EmptyState title="Tudo tranquilo." description="Nenhuma ação pendente." />
+          )}
+        </section>
 
         <section>
-          <SectionTitle
-            title="Métricas principais"
-            hint="Números de demonstração — serão substituídos por dados reais."
-            action={<DemoTag />}
-          />
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
-            {overviewMetrics.map((m) => (
-              <div key={m.key} className="bg-surface/70 px-4 py-5 backdrop-blur-sm">
-                <p className="label-caps truncate">{m.label}</p>
-                <p className="mt-2 text-lg text-foreground">
-                  <Counter
-                    value={m.value}
-                    format={(n) =>
-                      m.currency ? formatCurrency(n) : formatNumber(Math.round(n))
-                    }
-                  />
-                </p>
-                <p className="mt-1 text-[0.6875rem] text-success">{m.delta}</p>
-              </div>
-            ))}
-          </div>
+          <SectionTitle title="Oportunidades" action={<Link to="/opportunities" className="text-xs text-muted-foreground hover:text-foreground">Ver todas</Link>} />
+          {lists.data?.opps.length ? (
+            <ul className="divide-y divide-border/50">
+              {lists.data.opps.map((o) => (
+                <li key={o.id} className="py-3">
+                  <p className="text-sm text-foreground">{o.title}</p>
+                  <p className="text-xs text-muted-foreground">{o.signal}{o.next_step ? ` · próximo: ${o.next_step}` : ""}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="Nenhuma oportunidade ainda." description="Quando um contato demonstrar interesse real, ela aparece aqui." />
+          )}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-          <Panel className="relative overflow-hidden p-0">
-            <div className="flex items-start justify-between p-5">
-              <div>
-                <p className="label-caps">Opportunity intelligence</p>
-                <p className="text-display mt-1.5 text-sm text-foreground">
-                  O LETITZ está varrendo o mercado
-                </p>
-              </div>
-              <Link
-                to="/prospects"
-                className="focus-ring interactive flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[0.6875rem] tracking-[0.1em] text-foreground uppercase"
-              >
-                Lead discovery <ArrowUpRight className="size-3" />
-              </Link>
-            </div>
-            <div className="relative h-[19rem] sm:h-[22rem]">
-              <DigitalGlobe target={{ lat: -25.43, lng: -49.27 }} />
-              <div className="pointer-events-none absolute inset-x-5 bottom-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {discoveryPanels.slice(0, 3).map((p) => (
-                  <div
-                    key={p.label}
-                    className="panel-quiet bg-background/70 px-3 py-2 backdrop-blur-md"
-                  >
-                    <p className="label-caps truncate text-[0.625rem]">{p.label}</p>
-                    <p className="text-numeric mt-0.5 text-sm text-foreground">{p.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Panel>
-
-          <div className="grid gap-6">
-            <Panel>
-              <SectionTitle title="Pipeline" hint="Distribuição dos leads por estágio" />
-              <ul className="space-y-2.5">
-                {pipeline.map((stage) => {
-                  const max = Math.max(...pipeline.map((s) => s.count), 1);
-                  return (
-                    <li key={stage.status} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 text-xs text-muted-foreground">
-                        {stage.label}
-                      </span>
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <span
-                          className="accent-rule block h-full rounded-full transition-[width] duration-700"
-                          style={{ width: `${(stage.count / max) * 100}%` }}
-                        />
-                      </span>
-                      <span className="text-numeric w-8 text-right text-xs text-foreground">
-                        {stage.count}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Panel>
-
-            <Panel>
-              <SectionTitle
-                title="Vendas"
-                hint={`Ticket médio ${formatCurrency(salesSummary.averageTicket)}`}
-                action={
-                  <Link
-                    to="/sales"
-                    className="text-[0.6875rem] tracking-[0.1em] text-muted-foreground uppercase hover:text-foreground"
-                  >
-                    Ver
-                  </Link>
-                }
-              />
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-display text-xl text-foreground">
-                    {formatCurrency(salesSummary.revenue)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {salesSummary.count} vendas registradas
-                  </p>
-                </div>
-                <div className="w-32">
-                  <Sparkline values={snapshot.series} height={40} />
-                </div>
-              </div>
-            </Panel>
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <Panel>
-            <SectionTitle title="Atividade" hint="Últimos movimentos do workspace" />
-            <ul className="space-y-3">
-              {activity.map((entry) => (
-                <li key={entry.id} className="flex gap-3">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/70" />
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">{entry.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{entry.detail}</p>
-                  </div>
-                  <span className="ml-auto shrink-0 text-[0.6875rem] text-muted-foreground">
-                    {formatDateTime(entry.at)}
+        <section>
+          <SectionTitle title="Follow-ups" />
+          {lists.data?.follow.length ? (
+            <ul className="divide-y divide-border/50">
+              {lists.data.follow.map((f) => (
+                <li key={f.id} className="flex items-baseline gap-3 py-3">
+                  <span className="text-numeric w-28 shrink-0 text-xs text-primary">{formatDateTime(f.due_at)}</span>
+                  <span className="flex-1 text-sm text-foreground">{f.reason}</span>
+                  <span className="text-[0.625rem] tracking-[0.12em] text-muted-foreground uppercase">
+                    {f.kind === "reminder" ? "lembrete" : "execução"}
                   </span>
                 </li>
               ))}
             </ul>
-          </Panel>
+          ) : (
+            <EmptyState title="Nenhum follow-up agendado." description="Peça ao Agent: “me lembra daqui 3 horas…”." />
+          )}
+        </section>
 
-          <Panel>
-            <SectionTitle title="Conversão do funil" hint="Últimos 30 dias" action={<DemoTag />} />
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              {[
-                ["Captados", snapshot.captured],
-                ["Qualificados", snapshot.qualified],
-                ["Contatados", snapshot.contacted],
-                ["Respostas", snapshot.replies],
-                ["Propostas", snapshot.proposals],
-                ["Ganhos", snapshot.won],
-              ].map(([label, value]) => (
-                <div key={label as string} className="border-b border-border pb-3">
-                  <p className="label-caps">{label as string}</p>
-                  <p className="text-numeric mt-1 text-base text-foreground">
-                    {formatNumber(value as number)}
-                  </p>
-                </div>
+        <section>
+          <SectionTitle title="Vendas" action={<Link to="/sales" className="text-xs text-muted-foreground hover:text-foreground">Ver todas</Link>} />
+          {lists.data?.sales.length ? (
+            <ul className="divide-y divide-border/50">
+              {lists.data.sales.map((v) => (
+                <li key={v.id} className="flex items-baseline justify-between py-3 text-sm">
+                  <span className="text-foreground">{v.client_name}</span>
+                  <span className="text-numeric text-foreground">{formatCurrency(Number(v.value))}</span>
+                </li>
               ))}
-            </div>
-          </Panel>
+            </ul>
+          ) : (
+            <EmptyState title="Nenhuma venda registrada." description="Vendas só entram aqui com sua confirmação." />
+          )}
         </section>
       </div>
-    </AppShell>
+    </div>
   );
 }
