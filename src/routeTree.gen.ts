@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentRouteImport } from './routes/agent'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
+import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as ProspectsRouteImport } from './routes/prospects'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -30,6 +33,11 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -38,6 +46,16 @@ const AuthRoute = AuthRouteImport.update({
 const CampaignsRoute = CampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeRoute = KnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpportunitiesRoute = OpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProspectsRoute = ProspectsRouteImport.update({
@@ -74,8 +92,11 @@ const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -86,8 +107,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -99,8 +123,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -113,8 +140,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agent'
+    | '/audit'
     | '/auth'
     | '/campaigns'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
@@ -125,8 +155,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agent'
+    | '/audit'
     | '/auth'
     | '/campaigns'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
@@ -137,8 +170,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agent'
+    | '/audit'
     | '/auth'
     | '/campaigns'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
@@ -150,8 +186,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentRoute: typeof AgentRoute
+  AuditRoute: typeof AuditRoute
   AuthRoute: typeof AuthRoute
   CampaignsRoute: typeof CampaignsRoute
+  KnowledgeRoute: typeof KnowledgeRoute
+  OpportunitiesRoute: typeof OpportunitiesRoute
   ProspectsRoute: typeof ProspectsRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
@@ -176,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -188,6 +234,20 @@ declare module '@tanstack/react-router' {
       path: '/campaigns'
       fullPath: '/campaigns'
       preLoaderRoute: typeof CampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge': {
+      id: '/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opportunities': {
+      id: '/opportunities'
+      path: '/opportunities'
+      fullPath: '/opportunities'
+      preLoaderRoute: typeof OpportunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prospects': {
@@ -238,8 +298,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentRoute: AgentRoute,
+  AuditRoute: AuditRoute,
   AuthRoute: AuthRoute,
   CampaignsRoute: CampaignsRoute,
+  KnowledgeRoute: KnowledgeRoute,
+  OpportunitiesRoute: OpportunitiesRoute,
   ProspectsRoute: ProspectsRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
