@@ -17,6 +17,7 @@ import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as ProspectsRouteImport } from './routes/prospects'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as LeadsIndexRouteImport } from './routes/leads.index'
 import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
 
@@ -60,6 +61,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentRoute = ApiAgentRouteImport.update({
+  id: '/api/agent',
+  path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeadsIndexRoute = LeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads/': typeof LeadsIndexRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads': typeof LeadsIndexRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads/': typeof LeadsIndexRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads/'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads/'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   ProspectsRoute: typeof ProspectsRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
+  ApiAgentRoute: typeof ApiAgentRoute
   LeadsLeadIdRoute: typeof LeadsLeadIdRoute
   LeadsIndexRoute: typeof LeadsIndexRoute
 }
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent': {
+      id: '/api/agent'
+      path: '/api/agent'
+      fullPath: '/api/agent'
+      preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leads/': {
       id: '/leads/'
       path: '/leads'
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProspectsRoute: ProspectsRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
+  ApiAgentRoute: ApiAgentRoute,
   LeadsLeadIdRoute: LeadsLeadIdRoute,
   LeadsIndexRoute: LeadsIndexRoute,
 }
