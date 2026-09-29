@@ -168,7 +168,7 @@ function Prospects() {
               <DigitalGlobe target={target} searching={searching} />
 
               <div className="pointer-events-none absolute top-4 left-4 space-y-2">
-                {discoveryPanels.slice(0, 3).map((p) => (
+                {livePanels.slice(0, 3).map((p) => (
                   <div
                     key={p.label}
                     className="panel-quiet w-36 bg-background/70 px-3 py-2 backdrop-blur-md"
@@ -180,7 +180,7 @@ function Prospects() {
               </div>
 
               <div className="pointer-events-none absolute top-4 right-4 space-y-2">
-                {discoveryPanels.slice(3).map((p) => (
+                {livePanels.slice(3).map((p) => (
                   <div
                     key={p.label}
                     className="panel-quiet w-36 bg-background/70 px-3 py-2 backdrop-blur-md"
