@@ -239,11 +239,11 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="panel-quiet flex flex-col items-center gap-3 px-6 py-14 text-center">
-      <div className="size-9 rounded-lg border border-border bg-surface-2" />
+    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+      <span className="accent-rule mb-2 h-px w-10 rounded-full opacity-70" />
       <p className="text-display text-sm text-foreground">{title}</p>
       <p className="max-w-sm text-xs text-muted-foreground">{description}</p>
-      {action}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }
@@ -252,15 +252,33 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-md bg-surface-2/70", className)} />;
 }
 
-export function DemoTag({ className }: { className?: string }) {
+export function StatusPill({ status, className }: { status: string; className?: string }) {
+  const tone: Record<string, string> = {
+    preparing: "text-muted-foreground",
+    awaiting_authorization: "text-warning",
+    executing: "text-primary",
+    completed: "text-success",
+    failed: "text-destructive",
+    denied: "text-muted-foreground",
+  };
+  const label: Record<string, string> = {
+    preparing: "Preparando",
+    awaiting_authorization: "Aguardando autorização",
+    executing: "Executando",
+    completed: "Concluída",
+    failed: "Falhou",
+    denied: "Não autorizada",
+  };
   return (
     <span
       className={cn(
-        "rounded border border-border px-1.5 py-0.5 text-[0.5625rem] tracking-[0.16em] text-muted-foreground uppercase",
+        "inline-flex items-center gap-1.5 text-[0.625rem] tracking-[0.12em] uppercase",
+        tone[status] ?? "text-muted-foreground",
         className,
       )}
     >
-      dados demo
+      <span className="size-1.5 rounded-full bg-current" />
+      {label[status] ?? status}
     </span>
   );
 }
