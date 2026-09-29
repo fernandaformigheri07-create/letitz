@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790643083653,
+      "tag": "0000_letitz_core_schema",
+      "breakpoints": true
+    }
+  ]
+}

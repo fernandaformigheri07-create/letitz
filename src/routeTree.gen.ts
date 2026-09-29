@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentRouteImport } from './routes/agent'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AuditRouteImport } from './routes/audit'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
-import { Route as ConversationsRouteImport } from './routes/conversations'
+import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as ProspectsRouteImport } from './routes/prospects'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as LeadsIndexRouteImport } from './routes/leads.index'
 import { Route as LeadsLeadIdRouteImport } from './routes/leads.$leadId'
 
@@ -30,9 +33,14 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsRoute = CampaignsRouteImport.update({
@@ -40,9 +48,14 @@ const CampaignsRoute = CampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConversationsRoute = ConversationsRouteImport.update({
-  id: '/conversations',
-  path: '/conversations',
+const KnowledgeRoute = KnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpportunitiesRoute = OpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProspectsRoute = ProspectsRouteImport.update({
@@ -60,6 +73,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentRoute = ApiAgentRouteImport.update({
+  id: '/api/agent',
+  path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeadsIndexRoute = LeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -74,24 +92,30 @@ const LeadsLeadIdRoute = LeadsLeadIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
-  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
-  '/conversations': typeof ConversationsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads/': typeof LeadsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
-  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
-  '/conversations': typeof ConversationsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads': typeof LeadsIndexRoute
 }
@@ -99,12 +123,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
-  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
+  '/auth': typeof AuthRoute
   '/campaigns': typeof CampaignsRoute
-  '/conversations': typeof ConversationsRoute
+  '/knowledge': typeof KnowledgeRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/prospects': typeof ProspectsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/api/agent': typeof ApiAgentRoute
   '/leads/$leadId': typeof LeadsLeadIdRoute
   '/leads/': typeof LeadsIndexRoute
 }
@@ -113,36 +140,45 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agent'
-    | '/analytics'
+    | '/audit'
+    | '/auth'
     | '/campaigns'
-    | '/conversations'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agent'
-    | '/analytics'
+    | '/audit'
+    | '/auth'
     | '/campaigns'
-    | '/conversations'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads'
   id:
     | '__root__'
     | '/'
     | '/agent'
-    | '/analytics'
+    | '/audit'
+    | '/auth'
     | '/campaigns'
-    | '/conversations'
+    | '/knowledge'
+    | '/opportunities'
     | '/prospects'
     | '/sales'
     | '/settings'
+    | '/api/agent'
     | '/leads/$leadId'
     | '/leads/'
   fileRoutesById: FileRoutesById
@@ -150,12 +186,15 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentRoute: typeof AgentRoute
-  AnalyticsRoute: typeof AnalyticsRoute
+  AuditRoute: typeof AuditRoute
+  AuthRoute: typeof AuthRoute
   CampaignsRoute: typeof CampaignsRoute
-  ConversationsRoute: typeof ConversationsRoute
+  KnowledgeRoute: typeof KnowledgeRoute
+  OpportunitiesRoute: typeof OpportunitiesRoute
   ProspectsRoute: typeof ProspectsRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
+  ApiAgentRoute: typeof ApiAgentRoute
   LeadsLeadIdRoute: typeof LeadsLeadIdRoute
   LeadsIndexRoute: typeof LeadsIndexRoute
 }
@@ -176,11 +215,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns': {
@@ -190,11 +236,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/conversations': {
-      id: '/conversations'
-      path: '/conversations'
-      fullPath: '/conversations'
-      preLoaderRoute: typeof ConversationsRouteImport
+    '/knowledge': {
+      id: '/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opportunities': {
+      id: '/opportunities'
+      path: '/opportunities'
+      fullPath: '/opportunities'
+      preLoaderRoute: typeof OpportunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prospects': {
@@ -218,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent': {
+      id: '/api/agent'
+      path: '/api/agent'
+      fullPath: '/api/agent'
+      preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leads/': {
       id: '/leads/'
       path: '/leads'
@@ -238,12 +298,15 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentRoute: AgentRoute,
-  AnalyticsRoute: AnalyticsRoute,
+  AuditRoute: AuditRoute,
+  AuthRoute: AuthRoute,
   CampaignsRoute: CampaignsRoute,
-  ConversationsRoute: ConversationsRoute,
+  KnowledgeRoute: KnowledgeRoute,
+  OpportunitiesRoute: OpportunitiesRoute,
   ProspectsRoute: ProspectsRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
+  ApiAgentRoute: ApiAgentRoute,
   LeadsLeadIdRoute: LeadsLeadIdRoute,
   LeadsIndexRoute: LeadsIndexRoute,
 }

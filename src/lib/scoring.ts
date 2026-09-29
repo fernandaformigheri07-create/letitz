@@ -132,11 +132,11 @@ export function qualityFromScore(score: number): LeadQuality {
 }
 
 export const QUALITY_LABEL: Record<LeadQuality, string> = {
-  exceptional: "Excepcional",
-  good: "Bom",
-  medium: "Médio",
-  low: "Baixa prioridade",
-  discarded: "Descartado",
+  exceptional: "Exceptional",
+  good: "Good Opportunity",
+  medium: "Medium",
+  low: "Low",
+  discarded: "Discarded",
 };
 
 export const WEBSITE_STATUS_LABEL: Record<WebsiteStatus, string> = {

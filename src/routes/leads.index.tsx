@@ -1,140 +1,127 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { ArrowUpRight, Plus } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
-import { LeadRow } from "@/components/LeadRow";
-import { Chip, DemoTag, Panel, SectionTitle } from "@/components/ui-kit";
-import { leads, LEAD_STATUS_LABEL, LEAD_STATUS_ORDER, type LeadStatus } from "@/lib/demo-data";
+import { ActionButton, Chip, EmptyState, QualityBadge } from "@/components/ui-kit";
+import { supabase } from "@/integrations/supabase/client";
 import type { LeadQuality } from "@/lib/scoring";
 
 export const Route = createFileRoute("/leads/")({
   head: () => ({
     meta: [
-      { title: "Leads — CRM do LETITZ" },
-      {
-        name: "description",
-        content:
-          "CRM do LETITZ: leads qualificados por score, filtros por qualidade, presença digital e estágio do funil.",
-      },
-      { property: "og:title", content: "Leads — CRM do LETITZ" },
-      {
-        property: "og:description",
-        content: "Todo o pipeline de prospecção organizado por qualidade e estágio.",
-      },
+      { title: "Leads — LETITZ" },
+      { name: "description", content: "Seus leads reais, com sinais, contexto e justificativa de cada oportunidade." },
+      { property: "og:title", content: "Leads — LETITZ" },
+      { property: "og:description", content: "CRM de leads qualificados pelo LETITZ." },
     ],
   }),
-  component: LeadsPage,
+  component: () => (
+    <AppShell greeting="Leads" subtitle="Somente dados reais — adicionados por você ou pelo Agent.">
+      <Leads />
+    </AppShell>
+  ),
 });
 
-const QUALITY_FILTERS: Array<{ key: LeadQuality | "all"; label: string }> = [
+const FILTERS: Array<{ key: LeadQuality | "all"; label: string }> = [
   { key: "all", label: "Todos" },
-  { key: "exceptional", label: "Excepcionais" },
-  { key: "good", label: "Bons" },
-  { key: "medium", label: "Médios" },
-  { key: "low", label: "Baixa prioridade" },
+  { key: "exceptional", label: "Exceptional" },
+  { key: "good", label: "Good Opportunity" },
+  { key: "medium", label: "Medium" },
+  { key: "low", label: "Low" },
+  { key: "discarded", label: "Discarded" },
 ];
 
-const SIGNAL_FILTERS = [
-  { key: "no_website", label: "Sem site" },
-  { key: "website_problem", label: "Site com problema" },
-  { key: "whatsapp", label: "WhatsApp disponível" },
-  { key: "instagram", label: "Instagram disponível" },
-] as const;
+function Leads() {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<LeadQuality | "all">("all");
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
 
-type SignalKey = (typeof SIGNAL_FILTERS)[number]["key"];
+  const leads = useQuery({
+    queryKey: ["leads"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("id,company_name,contact_name,city,segment,lead_quality,justification,status")
+        .order("lead_score", { ascending: false });
+      return data ?? [];
+    },
+  });
 
-function LeadsPage() {
-  const [quality, setQuality] = useState<LeadQuality | "all">("all");
-  const [status, setStatus] = useState<LeadStatus | "all">("all");
-  const [signals, setSignals] = useState<SignalKey[]>([]);
-  const [query, setQuery] = useState("");
-
-  const filtered = useMemo(
-    () =>
-      leads.filter((l) => {
-        if (quality !== "all" && l.lead_quality !== quality) return false;
-        if (status !== "all" && l.lead_status !== status) return false;
-        if (signals.includes("no_website") && l.website !== null) return false;
-        if (
-          signals.includes("website_problem") &&
-          (l.website === null || l.website_status === "healthy")
-        )
-          return false;
-        if (signals.includes("whatsapp") && !l.whatsapp) return false;
-        if (signals.includes("instagram") && !l.instagram) return false;
-        if (query.trim()) {
-          const q = query.toLowerCase();
-          const hay = `${l.company_name} ${l.segment} ${l.city} ${l.state}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      }),
-    [quality, status, signals, query],
+  const visible = (leads.data ?? []).filter(
+    (l) =>
+      (filter === "all" || l.lead_quality === filter) &&
+      `${l.company_name} ${l.contact_name ?? ""} ${l.city ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const toggleSignal = (key: SignalKey) =>
-    setSignals((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => (
+          <Chip key={f.key} active={filter === f.key} onClick={() => setFilter(f.key)}>{f.label}</Chip>
+        ))}
+        <input className="input-base ml-auto max-w-xs" placeholder="Buscar" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <ActionButton variant="outline" onClick={() => setAdding((v) => !v)}><Plus className="size-3.5" /> Lead</ActionButton>
+      </div>
+
+      {adding && <NewLeadForm onDone={() => { setAdding(false); qc.invalidateQueries({ queryKey: ["leads"] }); }} />}
+
+      {leads.data && visible.length === 0 ? (
+        <EmptyState
+          title={leads.data.length ? "Nenhum lead neste filtro." : "Nenhum lead ainda."}
+          description="Adicione manualmente ou peça ao Agent para organizar sua base."
+        />
+      ) : (
+        <div className="divide-y divide-border/50">
+          {visible.map((l) => (
+            <Link key={l.id} to="/leads/$leadId" params={{ leadId: l.id }} className="interactive flex items-center gap-4 px-2 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-foreground">{l.company_name}{l.contact_name ? <span className="text-muted-foreground"> · {l.contact_name}</span> : null}</p>
+                <p className="truncate text-xs text-muted-foreground">{[l.segment, l.city].filter(Boolean).join(" · ")}{l.justification ? ` — ${l.justification}` : ""}</p>
+              </div>
+              <span className="hidden text-[0.625rem] tracking-[0.12em] text-muted-foreground uppercase sm:inline">{l.status}</span>
+              <QualityBadge quality={l.lead_quality as LeadQuality} />
+              <ArrowUpRight className="size-3.5 text-muted-foreground" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewLeadForm({ onDone }: { onDone: () => void }) {
+  const [f, setF] = useState({ company_name: "", contact_name: "", segment: "", city: "", state: "", whatsapp: "", website: "" });
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null])) as Record<string, string | null>;
+    const signals = [!clean["website"] && "Sem site informado", clean["whatsapp"] && "WhatsApp disponível"].filter(Boolean) as string[];
+    await supabase.from("leads").insert({
+      ...clean,
+      company_name: f.company_name.trim(),
+      signals,
+      justification: signals.join(" + ") || null,
+    });
+    setBusy(false);
+    onDone();
+  };
 
   return (
-    <AppShell greeting="Leads" subtitle="Seu CRM de prospecção, ordenado por oportunidade real.">
-      <Panel>
-        <SectionTitle
-          title={`${filtered.length} leads`}
-          hint="Lead quality, presença digital e estágio do funil"
-          action={<DemoTag />}
-        />
-
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label-caps mr-1">Lead quality</span>
-            {QUALITY_FILTERS.map((f) => (
-              <Chip key={f.key} active={quality === f.key} onClick={() => setQuality(f.key)}>
-                {f.label}
-              </Chip>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label-caps mr-1">Sinais</span>
-            {SIGNAL_FILTERS.map((f) => (
-              <Chip key={f.key} active={signals.includes(f.key)} onClick={() => toggleSignal(f.key)}>
-                {f.label}
-              </Chip>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label-caps mr-1">Status</span>
-            <Chip active={status === "all"} onClick={() => setStatus("all")}>
-              Todos
-            </Chip>
-            {LEAD_STATUS_ORDER.map((s) => (
-              <Chip key={s} active={status === s} onClick={() => setStatus(s)}>
-                {LEAD_STATUS_LABEL[s]}
-              </Chip>
-            ))}
-          </div>
-
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por empresa, segmento ou cidade"
-            className="input-base max-w-sm"
-          />
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-xl border border-border">
-          {filtered.length === 0 ? (
-            <p className="px-4 py-12 text-center text-xs text-muted-foreground">
-              Nenhum lead corresponde a esses filtros.
-            </p>
-          ) : (
-            [...filtered]
-              .sort((a, b) => b.lead_score - a.lead_score)
-              .map((lead) => <LeadRow key={lead.id} lead={lead} />)
-          )}
-        </div>
-      </Panel>
-    </AppShell>
+    <form onSubmit={save} className="grid gap-3 rounded-2xl bg-surface/40 p-5 sm:grid-cols-3">
+      <input required className="input-base" placeholder="Empresa *" value={f.company_name} onChange={set("company_name")} />
+      <input className="input-base" placeholder="Contato" value={f.contact_name} onChange={set("contact_name")} />
+      <input className="input-base" placeholder="Segmento" value={f.segment} onChange={set("segment")} />
+      <input className="input-base" placeholder="Cidade" value={f.city} onChange={set("city")} />
+      <input className="input-base" placeholder="Estado" value={f.state} onChange={set("state")} />
+      <input className="input-base" placeholder="WhatsApp" value={f.whatsapp} onChange={set("whatsapp")} />
+      <input className="input-base sm:col-span-2" placeholder="Site (vazio = sem site)" value={f.website} onChange={set("website")} />
+      <ActionButton type="submit" disabled={busy}>Salvar lead</ActionButton>
+    </form>
   );
 }
