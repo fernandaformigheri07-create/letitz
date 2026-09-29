@@ -32,7 +32,7 @@ function Campaigns() {
       {q.data?.map((c) => (
         <div key={c.id} className="py-4">
           <p className="text-sm text-foreground">{c.name} <span className="ml-2 text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground">{c.status}</span></p>
-          {c.message_template && <p className="mt-1 text-xs text-muted-foreground">{c.message_template}</p>}
+          {c.message && <p className="mt-1 text-xs text-muted-foreground">{c.message}</p>}
         </div>
       ))}
     </div>
