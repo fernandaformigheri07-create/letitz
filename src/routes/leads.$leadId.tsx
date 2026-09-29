@@ -86,7 +86,7 @@ function LeadDetail() {
           </section>
 
           <section>
-            <SectionTitle title="Conversa" hint={conv ? `Interlocutor: ${conv.interlocutor_type ?? "desconhecido"}${conv.last_intent ? ` · ${conv.last_intent}` : ""}` : undefined} />
+            <SectionTitle title="Conversa" hint={conv ? `Interlocutor: ${conv.interlocutor_type ?? "desconhecido"}${conv.last_intent ? ` · ${conv.last_intent}` : ""}` : ""} />
             {messages.length ? (
               <div className="space-y-2">
                 {messages.map((m) => (

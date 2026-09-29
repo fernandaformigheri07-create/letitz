@@ -95,7 +95,7 @@ function AgentWorkspace() {
             key={threadId}
             threadId={threadId}
             initialMessages={history.data}
-            initialPrompt={q}
+            {...(q ? { initialPrompt: q } : {})}
           />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
