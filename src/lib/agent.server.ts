@@ -353,7 +353,7 @@ export async function handleAgent(request: Request): Promise<Response> {
         const patch: Record<string, string> = { updated_at: new Date().toISOString() };
         if (i.status) patch["status"] = i.status;
         if (i.lead_quality) patch["lead_quality"] = i.lead_quality;
-        const { error } = await sb.from("leads").update(patch).in("id", i.lead_ids);
+        const { error } = await sb.from("leads").update(patch as never).in("id", i.lead_ids);
         if (error) return { ok: false, error: error.message };
         await createAction({ tool: "update_leads", intent: "organizar", summary: `${i.lead_ids.length} lead(s) atualizados`, input: i, level: 3, status: "completed" });
         return { ok: true };
