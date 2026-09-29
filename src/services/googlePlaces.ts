@@ -42,16 +42,26 @@ export interface SearchResult {
 
 /** Simulação — nenhuma API externa é consultada nesta versão. */
 export async function searchProspects(query: SearchQuery): Promise<SearchResult> {
-  const pool = leads.filter((l) => {
+  const city = query.location.trim().toLowerCase().split(",")[0]!.trim();
+
+  const matchesSignals = (l: Lead) => {
     if (query.onlyWithoutWebsite && l.website !== null) return false;
     if (query.onlyWithWhatsapp && !l.whatsapp) return false;
-    const loc = query.location.trim().toLowerCase();
-    if (loc.length > 2 && !`${l.city} ${l.state} ${l.country}`.toLowerCase().includes(loc.split(",")[0]!.trim()))
-      return false;
     return true;
-  });
+  };
+  const matchesLocation = (l: Lead) =>
+    city.length < 3 || `${l.city} ${l.state} ${l.country}`.toLowerCase().includes(city);
 
-  const selected = (pool.length ? pool : leads).slice(0, Math.max(6, Math.min(query.quantity, 50)));
+  // Filtragem progressiva: preserva os sinais pedidos e só relaxa a região
+  // quando a base demo não tem cobertura suficiente.
+  let pool = leads.filter((l) => matchesSignals(l) && matchesLocation(l));
+  if (pool.length < 4) pool = leads.filter(matchesSignals);
+  if (pool.length === 0) pool = [...leads];
+
+  const selected = [...pool]
+    .sort((a, b) => b.lead_score - a.lead_score)
+    .slice(0, Math.max(6, Math.min(query.quantity, 50)));
+
   const exceptional = selected.filter((l) => l.lead_quality === "exceptional").length;
   const good = selected.filter((l) => l.lead_quality === "good").length;
   const medium = selected.filter((l) => l.lead_quality === "medium").length;
