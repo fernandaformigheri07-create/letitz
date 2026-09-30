@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- UI config lives in `workspace_settings.ui` (schema in `src/lib/ui-settings.ts`), applied as CSS vars by AppShell; the Agent changes it via tools in `agent.server.ts` — one source of truth so the Agent controls the whole design system, not individual pages.
