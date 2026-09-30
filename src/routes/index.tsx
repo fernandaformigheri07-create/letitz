@@ -1,14 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
 import { ActionCard } from "@/components/agent/ActionCard";
 import { SUGGESTIONS } from "@/components/agent/AgentChat";
 import { EmptyState, SectionTitle } from "@/components/ui-kit";
+import { useUiSettings } from "@/hooks/use-ui-settings";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { orderedSections, type SectionId } from "@/lib/ui-settings";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +41,7 @@ const count = async (table: "leads" | "conversations" | "campaigns" | "conversat
 
 function CommandCenter() {
   const navigate = useNavigate();
+  const ui = useUiSettings();
   const [prompt, setPrompt] = useState("");
 
   const stats = useQuery({
@@ -79,58 +83,68 @@ function CommandCenter() {
 
   const s = stats.data;
   const metrics = [
-    ["Leads", s?.leads], ["Contatos", s?.contacts], ["Empresas", s?.companies], ["Conversas", s?.conversations],
-    ["Campanhas", s?.campaigns], ["Mensagens", s?.messages], ["Oportunidades", s?.opps], ["Interessados", s?.interested],
-    ["Follow-ups", s?.followUps], ["Vendas", s?.sales], ["Receita", s ? formatCurrency(s.revenue) : undefined],
-    ["Conversão", s ? `${s.conversion}%` : undefined],
-  ] as const;
+    ["leads", "Leads", s?.leads], ["contacts", "Contatos", s?.contacts], ["companies", "Empresas", s?.companies],
+    ["conversations", "Conversas", s?.conversations], ["campaigns", "Campanhas", s?.campaigns],
+    ["messages", "Mensagens", s?.messages], ["opportunities", "Oportunidades", s?.opps],
+    ["interested", "Interessados", s?.interested], ["follow_ups", "Follow-ups", s?.followUps],
+    ["sales", "Vendas", s?.sales], ["revenue", "Receita", s ? formatCurrency(s.revenue) : undefined],
+    ["conversion", "Conversão", s ? `${s.conversion}%` : undefined],
+  ].filter(([id]) => !ui.dashboard.hidden_metrics.includes(id as string)) as Array<[string, string, string | number | undefined]>;
 
   const go = (text: string) => text.trim() && navigate({ to: "/agent", search: { q: text.trim() } });
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-12">
-      <section className="rise-in pt-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-3.5 text-primary" strokeWidth={1.7} />
-          <span className="label-caps text-foreground">LETITZ Agent</span>
-        </div>
-        <h1 className="text-display mt-3 text-2xl text-foreground sm:text-3xl">Command Center</h1>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            go(prompt);
-          }}
-          className="mt-6 flex items-center gap-2 rounded-2xl border border-border/70 bg-surface/60 p-2 pl-4 backdrop-blur-xl focus-within:border-primary/40"
-        >
-          <input
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Diga ao Agent o que fazer…"
-            className="h-10 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-          <button type="submit" aria-label="Enviar" className="focus-ring accent-rule rounded-xl p-2.5 text-primary-foreground">
-            <ArrowUp className="size-4" />
-          </button>
-        </form>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-          {SUGGESTIONS.slice(0, 3).map((t) => (
-            <button key={t} onClick={() => go(t)} className="text-xs text-muted-foreground hover:text-foreground">
-              {t}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-x-6 gap-y-5 border-y border-border/50 py-6 sm:grid-cols-4 lg:grid-cols-6">
-        {metrics.map(([label, value]) => (
-          <div key={label}>
-            <p className="label-caps">{label}</p>
-            <p className="text-numeric mt-1 text-lg text-foreground">{value ?? "—"}</p>
+  const sections: Record<SectionId, { wide?: boolean; node: ReactNode }> = {
+    agent_prompt: {
+      wide: true,
+      node: (
+        <section className="rise-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-3.5 text-primary" strokeWidth={1.7} />
+            <span className="label-caps text-foreground">LETITZ Agent</span>
           </div>
-        ))}
-      </section>
-
-      <div className="grid gap-12 lg:grid-cols-2">
+          <h1 className="text-display mt-3 text-2xl text-foreground sm:text-3xl">Command Center</h1>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              go(prompt);
+            }}
+            className="glow-soft mt-6 flex items-center gap-2 rounded-2xl border border-border/70 bg-surface/60 p-2 pl-4 backdrop-blur-xl focus-within:border-primary/40"
+          >
+            <input
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Diga ao Agent o que fazer — inclusive mudar o próprio LETITZ…"
+              className="h-10 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+            <button type="submit" aria-label="Enviar" className="focus-ring accent-rule rounded-xl p-2.5 text-primary-foreground">
+              <ArrowUp className="size-4" />
+            </button>
+          </form>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+            {SUGGESTIONS.slice(0, 3).map((t) => (
+              <button key={t} onClick={() => go(t)} className="text-xs text-muted-foreground hover:text-foreground">
+                {t}
+              </button>
+            ))}
+          </div>
+        </section>
+      ),
+    },
+    metrics: {
+      wide: true,
+      node: metrics.length ? (
+        <section className="panel-quiet grid grid-cols-2 gap-px overflow-hidden sm:grid-cols-4 lg:grid-cols-6">
+          {metrics.map(([id, label, value]) => (
+            <div key={id} className="bg-background/40 px-4 py-4">
+              <p className="label-caps">{label}</p>
+              <p className="text-numeric mt-1.5 text-lg text-foreground">{value ?? "—"}</p>
+            </div>
+          ))}
+        </section>
+      ) : null,
+    },
+    pending: {
+      node: (
         <section>
           <SectionTitle title="Decisões pendentes" hint="Ações do Agent aguardando sua autorização" />
           {lists.data?.pending.length ? (
@@ -139,13 +153,16 @@ function CommandCenter() {
             <EmptyState title="Tudo tranquilo." description="Nenhuma ação pendente." />
           )}
         </section>
-
+      ),
+    },
+    opportunities: {
+      node: (
         <section>
           <SectionTitle title="Oportunidades" action={<Link to="/opportunities" className="text-xs text-muted-foreground hover:text-foreground">Ver todas</Link>} />
           {lists.data?.opps.length ? (
             <ul className="divide-y divide-border/50">
               {lists.data.opps.map((o) => (
-                <li key={o.id} className="py-3">
+                <li key={o.id} className="data-row">
                   <p className="text-sm text-foreground">{o.title}</p>
                   <p className="text-xs text-muted-foreground">{o.signal}{o.next_step ? ` · próximo: ${o.next_step}` : ""}</p>
                 </li>
@@ -155,13 +172,16 @@ function CommandCenter() {
             <EmptyState title="Nenhuma oportunidade ainda." description="Quando um contato demonstrar interesse real, ela aparece aqui." />
           )}
         </section>
-
+      ),
+    },
+    follow_ups: {
+      node: (
         <section>
           <SectionTitle title="Follow-ups" />
           {lists.data?.follow.length ? (
             <ul className="divide-y divide-border/50">
               {lists.data.follow.map((f) => (
-                <li key={f.id} className="flex items-baseline gap-3 py-3">
+                <li key={f.id} className="data-row flex items-baseline gap-3">
                   <span className="text-numeric w-28 shrink-0 text-xs text-primary">{formatDateTime(f.due_at)}</span>
                   <span className="flex-1 text-sm text-foreground">{f.reason}</span>
                   <span className="text-[0.625rem] tracking-[0.12em] text-muted-foreground uppercase">
@@ -174,13 +194,16 @@ function CommandCenter() {
             <EmptyState title="Nenhum follow-up agendado." description="Peça ao Agent: “me lembra daqui 3 horas…”." />
           )}
         </section>
-
+      ),
+    },
+    sales: {
+      node: (
         <section>
           <SectionTitle title="Vendas" action={<Link to="/sales" className="text-xs text-muted-foreground hover:text-foreground">Ver todas</Link>} />
           {lists.data?.sales.length ? (
             <ul className="divide-y divide-border/50">
               {lists.data.sales.map((v) => (
-                <li key={v.id} className="flex items-baseline justify-between py-3 text-sm">
+                <li key={v.id} className="data-row flex items-baseline justify-between text-sm">
                   <span className="text-foreground">{v.client_name}</span>
                   <span className="text-numeric text-foreground">{formatCurrency(Number(v.value))}</span>
                 </li>
@@ -190,7 +213,29 @@ function CommandCenter() {
             <EmptyState title="Nenhuma venda registrada." description="Vendas só entram aqui com sua confirmação." />
           )}
         </section>
-      </div>
+      ),
+    },
+  };
+
+  const visible = orderedSections(ui);
+
+  return (
+    <div className="mx-auto max-w-6xl pt-4">
+      {visible.length === 0 ? (
+        <EmptyState title="Command Center vazio." description="Todas as seções estão ocultas. Peça ao Agent para mostrá-las novamente." />
+      ) : (
+        <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2">
+          {visible.map((id) => {
+            const sec = sections[id];
+            if (!sec.node) return null;
+            return (
+              <div key={id} className={cn("min-w-0", sec.wide && "lg:col-span-2")}>
+                {sec.node}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
