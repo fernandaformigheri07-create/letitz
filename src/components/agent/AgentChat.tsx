@@ -28,6 +28,12 @@ const TOOL_LABEL: Record<string, string> = {
   create_follow_up: "Criando follow-up",
   save_knowledge: "Aprendendo regra de negócio",
   propose_sale: "Propondo registro de venda",
+  inspect_system: "Inspecionando o LETITZ",
+  update_interface: "Alterando a interface",
+  update_navigation: "Alterando a navegação",
+  update_dashboard: "Alterando o Command Center",
+  reset_interface: "Restaurando a interface",
+  request_data_cleanup: "Preparando limpeza de dados",
 };
 
 export const SUGGESTIONS = [
@@ -35,6 +41,7 @@ export const SUGGESTIONS = [
   "Quais são meus 10 melhores leads?",
   "Quem demonstrou interesse?",
   "Me lembra daqui 3 horas de revisar as propostas.",
+  "Deixa a interface mais compacta e com mais violeta.",
 ];
 
 type ToolPart = {
@@ -55,7 +62,7 @@ function ToolStep({ part }: { part: ToolPart }) {
   const actionId = typeof out["action_id"] === "string" ? (out["action_id"] as string) : null;
   const showCard =
     actionId &&
-    ["request_authorization", "send_message", "prepare_message", "propose_sale", "search_prospects"].includes(name);
+    ["request_authorization", "send_message", "prepare_message", "propose_sale", "search_prospects", "request_data_cleanup"].includes(name);
   const leads = Array.isArray(out["leads"]) ? (out["leads"] as Array<Record<string, unknown>>) : null;
 
   return (
@@ -170,7 +177,7 @@ export function AgentChat({
     onFinish: () => {
       qc.invalidateQueries({ queryKey: ["agent-side"] });
       qc.invalidateQueries({ queryKey: ["agent-threads"] });
-      qc.invalidateQueries({ queryKey: ["pending-count"] });
+      qc.invalidateQueries();
     },
   });
 
@@ -198,7 +205,7 @@ export function AgentChat({
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col lg:min-h-screen">
       <div className="flex-1 px-4 pt-8 sm:px-8">
-        <div className="mx-auto max-w-3xl space-y-7 pb-8">
+        <div className="mx-auto max-w-[var(--chat-w)] space-y-7 pb-8">
           {messages.length === 0 && (
             <div className="rise-in pt-10 sm:pt-20">
               <div className="flex items-center gap-2">
@@ -245,7 +252,7 @@ export function AgentChat({
             e.preventDefault();
             send(input);
           }}
-          className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-border/70 bg-surface/70 p-2 pl-4 shadow-[var(--shadow-elegant,none)] backdrop-blur-xl focus-within:border-primary/40"
+          className="mx-auto flex max-w-[var(--chat-w)] items-end gap-2 rounded-2xl border border-border/70 bg-surface/70 p-2 pl-4 shadow-[var(--shadow-elegant,none)] backdrop-blur-xl focus-within:border-primary/40"
         >
           <textarea
             value={input}
@@ -275,7 +282,7 @@ export function AgentChat({
             </button>
           )}
         </form>
-        <p className="mx-auto mt-2 max-w-3xl text-center text-[0.625rem] text-muted-foreground">
+        <p className="mx-auto mt-2 max-w-[var(--chat-w)] text-center text-[0.625rem] text-muted-foreground">
           Autopilot desligado · nenhuma ação operacional acontece sem sua autorização
         </p>
       </div>

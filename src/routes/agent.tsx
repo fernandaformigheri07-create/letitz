@@ -8,6 +8,7 @@ import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { AgentChat } from "@/components/agent/AgentChat";
 import { ActionCard } from "@/components/agent/ActionCard";
+import { useUiSettings } from "@/hooks/use-ui-settings";
 import { supabase } from "@/integrations/supabase/client";
 import { levelLabel } from "@/lib/agent-levels";
 import { formatDateTime } from "@/lib/format";
@@ -42,6 +43,7 @@ function AgentWorkspace() {
   const navigate = useNavigate({ from: "/agent" });
   const qc = useQueryClient();
   const [threadId, setThreadId] = useState<string | null>(t ?? null);
+  const ui = useUiSettings();
 
   const threads = useQuery({
     queryKey: ["agent-threads"],
@@ -88,7 +90,7 @@ function AgentWorkspace() {
   });
 
   return (
-    <div className="grid xl:grid-cols-[1fr_20rem]">
+    <div className={cn("grid", ui.agent.side_panel && "xl:grid-cols-[1fr_20rem]")}>
       <div className="min-w-0">
         {threadId && history.data ? (
           <AgentChat
@@ -104,7 +106,7 @@ function AgentWorkspace() {
         )}
       </div>
 
-      <aside className="hidden border-l border-border/50 xl:block">
+      <aside className={cn("hidden border-l border-border/50", ui.agent.side_panel && "xl:block")}>
         <div className="sticky top-0 h-screen space-y-8 overflow-y-auto p-5">
           <SidePanel threadId={threadId} />
           <section>
