@@ -171,7 +171,7 @@ export function AppShell({
                 <X className="size-4" />
               </button>
             </div>
-            <NavItems pending={pending} onNavigate={() => setMobileOpen(false)} />
+            <NavItems ui={ui} pending={pending} onNavigate={() => setMobileOpen(false)} />
             <div className="mt-auto p-4">
               <Link to="/audit" onClick={() => setMobileOpen(false)} className="text-xs text-muted-foreground">
                 Auditoria do Agent
@@ -181,7 +181,7 @@ export function AppShell({
         </div>
       )}
 
-      <div className="relative lg:pl-[15rem]">
+      <div className="relative lg:pl-[var(--sidebar-w)]">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
           <button onClick={() => setMobileOpen(true)} className="focus-ring text-muted-foreground" aria-label="Abrir menu">
             <Menu className="size-5" />
