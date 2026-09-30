@@ -605,6 +605,143 @@ export async function handleAgent(request: Request): Promise<Response> {
         return { ok: true, action_id: id, status: "awaiting_authorization" };
       },
     }),
+
+    // ================= Controle interno do LETITZ =================
+    inspect_system: tool({
+      description:
+        "Inspeciona o estado REAL do LETITZ: páginas, navegação (rótulos/ordem/ocultos), seções do Command Center, métricas, tema e tokens visuais, configuração do Agent e contagem de dados por tabela. Use antes de alterar a interface ou dados.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const ui = await loadUi();
+        const counts = Object.fromEntries(
+          await Promise.all(
+            CLEANUP_TABLES.map(async (t) => {
+              const { count } = await sb.from(t).select("id", { count: "exact", head: true });
+              return [t, count ?? 0] as const;
+            }),
+          ),
+        );
+        return {
+          ok: true,
+          pages: [...NAV_ITEMS.map((n) => n.path), "/leads/$leadId", "/audit", "/auth"],
+          navigation: orderedNav(ui),
+          nav_hidden: ui.nav.hidden,
+          dashboard_sections: DASHBOARD_SECTIONS.map((s) => ({ ...s, visible: !ui.dashboard.hidden.includes(s.id) })),
+          dashboard_order: orderedSections(ui),
+          metrics: METRIC_IDS.map((m) => ({ id: m, visible: !ui.dashboard.hidden_metrics.includes(m) })),
+          ui,
+          data_counts: counts,
+          protected: "autenticação, autorizações, segredos, credenciais e integridade do banco não são alteráveis.",
+        };
+      },
+    }),
+
+    update_interface: tool({
+      description:
+        "Altera REALMENTE o design system global do LETITZ (aplica em todas as páginas). Passe apenas os campos a mudar. theme.accent_hue (azul≈256, violeta≈288, ciano≈220, verde≈160), theme.accent2_hue, theme.accent_chroma (0.02–0.3), theme.background_lightness (0.06 muito escuro – 0.28), theme.base_hue (fundo: 265 navy, 250 grafite-azulado, 285 ameixa), theme.glow (0–2), radius (rem 0–1.25), scale (0.8 compacto – 1.2 espaçoso; afeta tipografia e espaçamento), sidebar_width (rem 11–20), table_density, agent.side_panel, agent.chat_width (rem 40–72). Reversível — execute direto.",
+      inputSchema: z.object({
+        request: z.string().describe("Pedido original do usuário"),
+        theme: z
+          .object({
+            accent_hue: z.number().nullable(),
+            accent2_hue: z.number().nullable(),
+            accent_chroma: z.number().nullable(),
+            background_lightness: z.number().nullable(),
+            base_hue: z.number().nullable(),
+            glow: z.number().nullable(),
+          })
+          .nullable(),
+        radius: z.number().nullable(),
+        scale: z.number().nullable(),
+        sidebar_width: z.number().nullable(),
+        table_density: z.enum(["compact", "default", "comfortable"]).nullable(),
+        agent: z.object({ side_panel: z.boolean().nullable(), chat_width: z.number().nullable() }).nullable(),
+      }),
+      execute: async ({ request, ...patch }) => saveUi("interface", request, (ui) => deepMerge(ui, patch)),
+    }),
+
+    update_navigation: tool({
+      description:
+        "Altera a navegação: renomear itens (labels: {path: novo rótulo}; string vazia restaura), ocultar/mostrar itens (Agent e Settings não podem ser ocultados) e reordenar (order: lista de paths). Reversível — execute direto.",
+      inputSchema: z.object({
+        request: z.string(),
+        rename: z.array(z.object({ path: z.enum(NAV_PATHS), label: z.string() })).nullable(),
+        hide: z.array(z.enum(NAV_PATHS)).nullable(),
+        show: z.array(z.enum(NAV_PATHS)).nullable(),
+        order: z.array(z.enum(NAV_PATHS)).nullable(),
+      }),
+      execute: async ({ request, rename, hide, show, order }) =>
+        saveUi("navigation", request, (ui) => {
+          const labels = { ...ui.nav.labels };
+          for (const r of rename ?? []) {
+            if (r.label.trim()) labels[r.path] = r.label.trim().slice(0, 32);
+            else delete labels[r.path];
+          }
+          let hidden = ui.nav.hidden.filter((p) => !(show ?? []).includes(p as NavPath));
+          hidden = [...new Set([...hidden, ...(hide ?? [])])].filter((p) => p !== "/agent" && p !== "/settings");
+          return { ...ui, nav: { labels, hidden, order: order ?? ui.nav.order } };
+        }),
+    }),
+
+    update_dashboard: tool({
+      description:
+        "Altera a APRESENTAÇÃO do Command Center (não apaga dados): ocultar/mostrar seções, reordenar seções, ocultar/mostrar métricas. 'Limpar o dashboard' = ocultar seções/métricas, NÃO apagar dados.",
+      inputSchema: z.object({
+        request: z.string(),
+        hide_sections: z.array(z.enum(SECTION_IDS)).nullable(),
+        show_sections: z.array(z.enum(SECTION_IDS)).nullable(),
+        order: z.array(z.enum(SECTION_IDS)).nullable(),
+        hide_metrics: z.array(z.enum(METRIC_IDS)).nullable(),
+        show_metrics: z.array(z.enum(METRIC_IDS)).nullable(),
+      }),
+      execute: async (i) =>
+        saveUi("dashboard", i.request, (ui) => {
+          const hidden = [...new Set([...ui.dashboard.hidden.filter((s) => !(i.show_sections ?? []).includes(s as SectionId)), ...(i.hide_sections ?? [])])];
+          const hm = [...new Set([...ui.dashboard.hidden_metrics.filter((m) => !(i.show_metrics ?? []).includes(m as MetricId)), ...(i.hide_metrics ?? [])])];
+          return { ...ui, dashboard: { hidden, order: i.order ?? ui.dashboard.order, hidden_metrics: hm } };
+        }),
+    }),
+
+    reset_interface: tool({
+      description: "Restaura a interface padrão do LETITZ (tema, navegação, dashboard, Agent). Reversível pela auditoria — confirme em texto com o usuário se ele não pediu explicitamente.",
+      inputSchema: z.object({ request: z.string(), scope: z.enum(["all", "theme", "navigation", "dashboard"]) }),
+      execute: async ({ request, scope }) =>
+        saveUi("reset", request, (ui) =>
+          scope === "all"
+            ? DEFAULT_UI
+            : scope === "theme"
+              ? { ...ui, theme: DEFAULT_UI.theme, radius: DEFAULT_UI.radius, scale: DEFAULT_UI.scale, sidebar_width: DEFAULT_UI.sidebar_width, table_density: DEFAULT_UI.table_density }
+              : scope === "navigation"
+                ? { ...ui, nav: DEFAULT_UI.nav }
+                : { ...ui, dashboard: DEFAULT_UI.dashboard },
+        ),
+    }),
+
+    request_data_cleanup: tool({
+      description:
+        "DESTRUTIVO: prepara a exclusão permanente de dados de negócio (tabelas escolhidas). NÃO executa — cria uma ação que o usuário precisa confirmar na interface. Antes, use inspect_system e diga exatamente quantos registros serão apagados. Se o pedido for ambíguo ('limpa o dashboard'), pergunte antes.",
+      inputSchema: z.object({
+        request: z.string(),
+        tables: z.array(z.enum(CLEANUP_TABLES)).min(1),
+      }),
+      execute: async ({ request, tables }) => {
+        const counts: Record<string, number> = {};
+        for (const t of tables) {
+          const { count } = await sb.from(t).select("id", { count: "exact", head: true });
+          counts[t] = count ?? 0;
+        }
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        const id = await createAction({
+          tool: "clear_data",
+          intent: "limpar dados",
+          summary: `Apagar permanentemente ${total} registro(s): ${tables.map((t) => `${t} (${counts[t]})`).join(", ")}`,
+          input: { tables, counts, request },
+          level: 3,
+          status: "awaiting_authorization",
+        });
+        return { ok: true, action_id: id, status: "awaiting_authorization", counts };
+      },
+    }),
   };
 
   // Título da operação a partir do primeiro pedido
