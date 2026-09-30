@@ -20,20 +20,22 @@ import {
 
 import { LetitzLogo } from "@/components/brand/Logo";
 import { useAuth } from "@/hooks/use-auth";
+import { useApplyUiSettings, useUiSettings } from "@/hooks/use-ui-settings";
 import { supabase } from "@/integrations/supabase/client";
+import { orderedNav, type UiSettings } from "@/lib/ui-settings";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { to: "/", label: "Command Center", icon: Gauge },
-  { to: "/agent", label: "Agent", icon: Bot, primary: true },
-  { to: "/prospects", label: "Prospect", icon: Radar },
-  { to: "/leads", label: "Leads", icon: Users },
-  { to: "/campaigns", label: "Campaigns", icon: Send },
-  { to: "/opportunities", label: "Opportunities", icon: Target },
-  { to: "/sales", label: "Sales", icon: Activity },
-  { to: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+const ICONS: Record<string, typeof Gauge> = {
+  "/": Gauge,
+  "/agent": Bot,
+  "/prospects": Radar,
+  "/leads": Users,
+  "/campaigns": Send,
+  "/opportunities": Target,
+  "/sales": Activity,
+  "/knowledge": BookOpen,
+  "/settings": Settings,
+};
 
 function usePendingCount(enabled: boolean) {
   return useQuery({
@@ -50,21 +52,22 @@ function usePendingCount(enabled: boolean) {
   });
 }
 
-function NavItems({ onNavigate, pending }: { onNavigate?: () => void; pending: number }) {
+function NavItems({ onNavigate, pending, ui }: { onNavigate?: () => void; pending: number; ui: UiSettings }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="flex flex-col gap-0.5 px-2">
-      {NAV.map(({ to, label, icon: Icon, ...rest }) => {
+      {orderedNav(ui).map(({ path: to, label }) => {
+        const Icon = ICONS[to] ?? Gauge;
         const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-        const primary = "primary" in rest;
+        const primary = to === "/agent";
         return (
           <Link
             key={to}
             to={to}
             onClick={onNavigate}
             className={cn(
-              "focus-ring relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.8125rem] transition-colors duration-200",
-              active ? "bg-surface-2/70 text-foreground" : "text-muted-foreground hover:text-foreground",
+              "focus-ring relative flex items-center gap-3 rounded-lg px-3 py-2 text-[0.8125rem] transition-colors duration-200",
+              active ? "bg-surface-2/70 text-foreground" : "text-muted-foreground hover:bg-surface/60 hover:text-foreground",
               primary && !active && "text-foreground",
             )}
           >
