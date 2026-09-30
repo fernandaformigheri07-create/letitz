@@ -5,6 +5,34 @@ import { z } from "zod";
 
 import type { Database, Json } from "@/integrations/supabase/types";
 import { levelLabel } from "@/lib/agent-levels";
+import {
+  DASHBOARD_SECTIONS,
+  DEFAULT_UI,
+  METRIC_IDS,
+  NAV_ITEMS,
+  NAV_PATHS,
+  SECTION_IDS,
+  deepMerge,
+  orderedNav,
+  orderedSections,
+  resolveUi,
+  uiSchema,
+  type MetricId,
+  type NavPath,
+  type SectionId,
+  type UiSettings,
+} from "@/lib/ui-settings";
+
+export const CLEANUP_TABLES = [
+  "leads",
+  "opportunities",
+  "conversations",
+  "conversation_messages",
+  "follow_ups",
+  "campaigns",
+  "sales",
+  "knowledge_items",
+] as const;
 
 type SB = SupabaseClient<Database>;
 const MODEL = "openai/gpt-6-astra";
@@ -101,6 +129,15 @@ Data/hora atual (UTC): ${now}
 13. Interlocutor: aparentemente humano, responsável, decisor, funcionário, equipe, possível bot, possível automação, desconhecido — sempre com grau de confiança. "Digite 1 para vendas" → possível automação.
 14. Aprendizado: quando o usuário responder uma regra de negócio (ex.: "só envie o vídeo após interesse", "desconto só se eu autorizar"), salve com save_knowledge.
 15. Referências contextuais: "as 10 melhores", "essas", "essa", "ela" referem-se à seleção atual/último resultado abaixo. Use set_selection para manter a seleção atualizada. Se for ambíguo, pergunte.
+
+## Controle interno do LETITZ
+16. Você controla o próprio LETITZ através de ferramentas reais: inspect_system, update_interface (design system global: cores, fundo, brilho, arredondamento, escala/compactação, sidebar, densidade de tabelas, tela do Agent), update_navigation (renomear/ocultar/reordenar), update_dashboard (seções e métricas do Command Center), reset_interface, request_data_cleanup.
+17. Quando o usuário pedir uma mudança no LETITZ, EXECUTE com a ferramenta — não ensine a fazer manualmente. Inspecione antes (inspect_system) quando precisar do estado atual. Traduza pedidos vagos ("mais premium", "mais escuro", "mais violeta", "mais compacto") em valores concretos e diga o que mudou (antes → depois).
+18. Só diga "feito" se a ferramenta retornar status completed. Se falhar, diga que falhou e por quê.
+19. Alterações de interface são reversíveis: execute direto. Exclusão de dados é destrutiva: use request_data_cleanup (exige confirmação na interface) e explique exatamente o que será apagado. "Limpar o dashboard" = ocultar seções (update_dashboard), não apagar dados; se houver ambiguidade que possa causar perda de dados, pergunte.
+20. Se o pedido não é suportado pelas ferramentas (ex.: criar um campo novo no banco, criar uma página nova, mover um componente específico para outro lugar), diga claramente que essa capacidade ainda não existe — nunca finja.
+21. Protegido: autenticação, autorizações, segredos, credenciais, integridade do banco. Controle interno do LETITZ NÃO concede permissão sobre serviços externos (WhatsApp, e-mail, Google etc.).
+
 
 ## Contexto da operação (estado real)
 Leads no CRM: ${ctx.leadsCount}
@@ -206,6 +243,45 @@ export async function handleAgent(request: Request): Promise<Response> {
 
   const leadCols =
     "id,company_name,segment,city,state,website,whatsapp,phone,contact_name,contact_role,lead_quality,lead_score,signals,justification,status";
+
+  const loadUi = async () => {
+    const { data } = await sb.from("workspace_settings").select("ui").eq("user_id", userId).maybeSingle();
+    return resolveUi(data?.ui);
+  };
+
+  /** Executa uma alteração real de configuração, valida o resultado e registra na auditoria. */
+  const saveUi = async (area: string, request: string, change: (ui: UiSettings) => UiSettings) => {
+    const before = await loadUi();
+    const parsed = uiSchema.safeParse(change(structuredClone(before)));
+    if (!parsed.success) {
+      const err = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      await audit(`system.${area}.failed`, { request, intent: `update_${area}`, status: "failed", error: err, previous_state: before as unknown as Json });
+      return { ok: false, status: "failed", error: `Valor fora do permitido — ${err}` };
+    }
+    const after = parsed.data;
+    const { error } = await sb
+      .from("workspace_settings")
+      .upsert({ user_id: userId, ui: after as unknown as Json, updated_at: new Date().toISOString() });
+    if (error) {
+      await audit(`system.${area}.failed`, { request, intent: `update_${area}`, status: "failed", error: error.message });
+      return { ok: false, status: "failed", error: error.message };
+    }
+    const check = await loadUi();
+    const verified = JSON.stringify(check) === JSON.stringify(after);
+    await audit(`system.${area}.${verified ? "completed" : "failed"}`, {
+      request,
+      intent: `update_${area}`,
+      detail: `Configuração de ${area} alterada`,
+      status: verified ? "completed" : "failed",
+      authorized_by: "comando do usuário (alteração interna reversível)",
+      previous_state: before as unknown as Json,
+      new_state: after as unknown as Json,
+      error: verified ? null : "Validação pós-gravação não confere",
+    });
+    return verified
+      ? { ok: true, status: "completed", applied: after, note: "Aplicado em todo o LETITZ. A interface atualiza ao fim desta resposta." }
+      : { ok: false, status: "failed", error: "A alteração não pôde ser validada." };
+  };
 
   const tools = {
     query_leads: tool({
