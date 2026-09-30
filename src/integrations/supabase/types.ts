@@ -90,6 +90,9 @@ export type Database = {
           event: string
           id: string
           intent: string | null
+          new_state: Json | null
+          previous_state: Json | null
+          request: string | null
           status: string | null
           thread_id: string | null
           user_id: string
@@ -103,6 +106,9 @@ export type Database = {
           event: string
           id?: string
           intent?: string | null
+          new_state?: Json | null
+          previous_state?: Json | null
+          request?: string | null
           status?: string | null
           thread_id?: string | null
           user_id?: string
@@ -116,6 +122,9 @@ export type Database = {
           event?: string
           id?: string
           intent?: string | null
+          new_state?: Json | null
+          previous_state?: Json | null
+          request?: string | null
           status?: string | null
           thread_id?: string | null
           user_id?: string
@@ -603,6 +612,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workspace_settings: {
+        Row: {
+          ui: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ui?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ui?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -8,6 +8,13 @@
       "when": 1790643083653,
       "tag": "0000_letitz_core_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790726886629,
+      "tag": "0001_workspace_ui_settings",
+      "breakpoints": true
     }
   ]
 }
