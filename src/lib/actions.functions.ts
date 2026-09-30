@@ -57,6 +57,21 @@ export const resolveAgentAction = createServerFn({ method: "POST" })
         status = "failed";
         err = e.message;
       } else result = "Venda registrada após confirmação do usuário.";
+    } else if (action.tool === "clear_data") {
+      const allowed = ["conversation_messages", "follow_ups", "sales", "opportunities", "conversations", "campaigns", "knowledge_items", "leads"] as const;
+      const requested = Array.isArray(input["tables"]) ? (input["tables"] as string[]) : [];
+      const deleted: string[] = [];
+      for (const t of allowed) {
+        if (!requested.includes(t)) continue;
+        const { error: e, count } = await sb.from(t).delete({ count: "exact" }).eq("user_id", userId);
+        if (e) {
+          status = "failed";
+          err = `Falha ao apagar ${t}: ${e.message}`;
+          break;
+        }
+        deleted.push(`${t} (${count ?? 0})`);
+      }
+      if (status !== "failed") result = `Apagado: ${deleted.join(", ") || "nada"}.`;
     } else if (action.tool === "request_authorization") {
       if (action.lead_id) {
         await sb.from("authorizations").insert({
