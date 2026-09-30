@@ -106,6 +106,8 @@ export function AppShell({
   const { session, user, ready } = useAuth();
   const navigate = useNavigate();
   const pending = usePendingCount(Boolean(session)).data ?? 0;
+  const ui = useUiSettings(Boolean(session));
+  useApplyUiSettings(ui);
 
   useEffect(() => {
     if (ready && !session) navigate({ to: "/auth" });
@@ -123,19 +125,20 @@ export function AppShell({
 
   return (
     <div className="relative min-h-screen bg-background">
-      <div className="pointer-events-none fixed inset-0 opacity-30">
-        <div className="absolute -top-40 left-1/3 size-[36rem] rounded-full bg-primary/8 blur-[140px]" />
-        <div className="absolute top-1/2 -right-40 size-[30rem] rounded-full bg-violet/8 blur-[150px]" />
+      <div className="pointer-events-none fixed inset-0" style={{ opacity: `calc(0.32 * var(--glow))` }}>
+        <div className="absolute -top-48 left-1/3 size-[38rem] rounded-full bg-primary/10 blur-[150px]" />
+        <div className="absolute top-1/2 -right-48 size-[32rem] rounded-full bg-violet/10 blur-[160px]" />
       </div>
 
-      <aside className="fixed top-0 left-0 z-30 hidden h-screen w-[15rem] flex-col border-r border-border/60 bg-surface/30 backdrop-blur-xl lg:flex">
+      <aside className="fixed top-0 left-0 z-30 hidden h-screen w-[var(--sidebar-w)] flex-col border-r border-border/60 bg-surface/40 backdrop-blur-xl lg:flex">
         <div className="flex h-16 items-center px-5">
           <Link to="/" className="focus-ring rounded-lg">
             <LetitzLogo />
           </Link>
         </div>
-        <div className="flex-1 overflow-y-auto pt-2">
-          <NavItems pending={pending} />
+        <p className="label-caps px-5 pb-2 pt-3 text-[0.625rem]">Workspace</p>
+        <div className="flex-1 overflow-y-auto">
+          <NavItems pending={pending} ui={ui} />
         </div>
         <div className="space-y-3 p-4">
           <Link to="/audit" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
