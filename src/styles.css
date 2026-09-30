@@ -55,43 +55,55 @@
 }
 
 :root {
+  /* ---- Controláveis pelo Agent (workspace_settings.ui) ---- */
+  --accent-h: 256;
+  --accent2-h: 288;
+  --accent-c: 0.185;
+  --bg-l: 0.135;
+  --base-h: 265;
+  --glow: 1;
   --radius: 0.75rem;
+  --ui-scale: 1;
+  --sidebar-w: 15rem;
+  --row-py: 0.7rem;
+  --chat-w: 48rem;
 
-  --background: oklch(0.145 0.008 265);
-  --foreground: oklch(0.96 0.004 265);
-  --surface: oklch(0.183 0.011 265);
-  --surface-2: oklch(0.213 0.014 265);
+  /* ---- Tokens derivados ---- */
+  --background: oklch(var(--bg-l) 0.01 var(--base-h));
+  --foreground: oklch(0.965 0.004 var(--base-h));
+  --surface: oklch(calc(var(--bg-l) + 0.035) 0.012 var(--base-h));
+  --surface-2: oklch(calc(var(--bg-l) + 0.068) 0.015 var(--base-h));
 
-  --card: oklch(0.196 0.012 265);
-  --card-foreground: oklch(0.96 0.004 265);
-  --popover: oklch(0.205 0.013 265);
-  --popover-foreground: oklch(0.96 0.004 265);
+  --card: oklch(calc(var(--bg-l) + 0.045) 0.013 var(--base-h));
+  --card-foreground: var(--foreground);
+  --popover: oklch(calc(var(--bg-l) + 0.06) 0.014 var(--base-h));
+  --popover-foreground: var(--foreground);
 
-  --primary: oklch(0.63 0.185 256);
-  --primary-foreground: oklch(0.15 0.01 265);
-  --secondary: oklch(0.24 0.016 265);
-  --secondary-foreground: oklch(0.93 0.005 265);
-  --muted: oklch(0.235 0.014 265);
-  --muted-foreground: oklch(0.66 0.018 258);
-  --accent: oklch(0.26 0.02 265);
-  --accent-foreground: oklch(0.95 0.005 265);
-  --violet: oklch(0.6 0.19 288);
+  --primary: oklch(0.64 var(--accent-c) var(--accent-h));
+  --primary-foreground: oklch(0.14 0.01 var(--base-h));
+  --secondary: oklch(calc(var(--bg-l) + 0.095) 0.016 var(--base-h));
+  --secondary-foreground: oklch(0.93 0.005 var(--base-h));
+  --muted: oklch(calc(var(--bg-l) + 0.09) 0.014 var(--base-h));
+  --muted-foreground: oklch(0.67 0.018 var(--base-h));
+  --accent: oklch(calc(var(--bg-l) + 0.115) 0.02 var(--base-h));
+  --accent-foreground: oklch(0.95 0.005 var(--base-h));
+  --violet: oklch(0.61 var(--accent-c) var(--accent2-h));
 
-  --destructive: oklch(0.6 0.2 25);
+  --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.97 0.005 265);
-  --success: oklch(0.72 0.15 160);
-  --warning: oklch(0.78 0.14 80);
+  --success: oklch(0.73 0.15 160);
+  --warning: oklch(0.79 0.14 80);
 
-  --border: oklch(0.27 0.012 265);
-  --border-strong: oklch(0.34 0.016 265);
-  --input: oklch(0.26 0.013 265);
-  --ring: oklch(0.63 0.185 256 / 45%);
+  --border: oklch(calc(var(--bg-l) + 0.12) 0.013 var(--base-h) / 0.75);
+  --border-strong: oklch(calc(var(--bg-l) + 0.2) 0.016 var(--base-h));
+  --input: oklch(calc(var(--bg-l) + 0.115) 0.013 var(--base-h));
+  --ring: oklch(0.64 var(--accent-c) var(--accent-h) / 45%);
 
-  --chart-1: oklch(0.63 0.185 256);
-  --chart-2: oklch(0.6 0.19 288);
-  --chart-3: oklch(0.72 0.15 160);
-  --chart-4: oklch(0.78 0.14 80);
-  --chart-5: oklch(0.55 0.05 265);
+  --chart-1: var(--primary);
+  --chart-2: var(--violet);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: oklch(0.55 0.05 var(--base-h));
 
   --gradient-accent: linear-gradient(135deg, var(--primary), var(--violet));
   --gradient-surface: linear-gradient(
@@ -99,9 +111,13 @@
     color-mix(in oklab, var(--surface) 92%, var(--primary) 8%),
     var(--background)
   );
-  --shadow-depth: 0 24px 60px -30px oklch(0 0 0 / 80%);
-  --glow-accent: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
-    0 12px 40px -18px color-mix(in oklab, var(--primary) 55%, transparent);
+  --shadow-depth: 0 1px 0 0 oklch(1 0 0 / 3%) inset, 0 24px 60px -30px oklch(0 0 0 / 80%);
+  --glow-accent: 0 0 0 1px color-mix(in oklab, var(--primary) calc(30% * var(--glow)), transparent),
+    0 12px 40px -18px color-mix(in oklab, var(--primary) calc(55% * var(--glow)), transparent);
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale));
 }
 
 @layer base {
