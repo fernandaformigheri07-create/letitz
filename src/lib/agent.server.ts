@@ -267,7 +267,9 @@ export async function handleAgent(request: Request): Promise<Response> {
       return { ok: false, status: "failed", error: error.message };
     }
     const check = await loadUi();
-    const verified = JSON.stringify(check) === JSON.stringify(after);
+    const stable = (v: unknown): string =>
+      Array.isArray(v) ? `[${v.map(stable).join(",")}]` : v && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${k}:${stable((v as Record<string, unknown>)[k])}`).join(",")}}` : JSON.stringify(v);
+    const verified = stable(check) === stable(after);
     await audit(`system.${area}.${verified ? "completed" : "failed"}`, {
       request,
       intent: `update_${area}`,
